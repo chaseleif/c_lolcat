@@ -1,12 +1,13 @@
 CC:=gcc
-#CFLAGS:=-lm -O0 -ggdb3
-CFLAGS:=-lm -O3 --fast-math
+#CFLAGS:=-O0 -ggdb3 -lm
+CFLAGS:=-O3 --fast-math
+LDFLAGS:=-lm
 BIN=lolcat
 
 all: $(BIN)
 
 $(BIN): lol.c
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 .PHONY: clean
 clean:
