@@ -19,18 +19,18 @@ struct {
   int duration;
   float speed;
 }opts;
-#define animate(o)      (o.flags&1)
-#define invert(o)       (o.flags&2)
-#define truecolor(o)    (o.flags&4)
-#define force(o)        (o.flags&8)
-#define help(o)         (o.flags&16)
-#define abort(o)        (o.flags&32)
-#define setanimate(o)   (o.flags|=1)
-#define setinvert(o)    (o.flags|=2)
-#define settruecolor(o) (o.flags|=4)
-#define setforce(o)     (o.flags|=8)
-#define sethelp(o)      (o.flags|=16)
-#define setabort(o)     (o.flags|=32)
+#define animate(o)      (o.flags&0x1)
+#define invert(o)       (o.flags&0x2)
+#define truecolor(o)    (o.flags&0x4)
+#define force(o)        (o.flags&0x8)
+#define help(o)         (o.flags&0x10)
+#define abort(o)        (o.flags&0x20)
+#define setanimate(o)   (o.flags|=0x1)
+#define setinvert(o)    (o.flags|=0x2)
+#define settruecolor(o) (o.flags|=0x4)
+#define setforce(o)     (o.flags|=0x8)
+#define sethelp(o)      (o.flags|=0x10)
+#define setabort(o)     (o.flags|=0x20)
 
 void (*println)(char*,int*);
 
@@ -147,8 +147,7 @@ void println_ani(char *str, int *os) {
 
 void cat(FILE *infile) {
   char line[512];
-  while (1) {
-    if (abort(opts)) break;
+  while (!abort(opts)) {
     if (!fgets(line, sizeof(line), infile)) break;
     println(line, &opts.os);
     if (invert(opts))
@@ -172,7 +171,7 @@ void print_usage() {
   "Concatenate FILE(s), or standard input, to standard output",
   "With no FILE, or when FILE is -, read standard input.",
   "",
-  "  -p, --spread=<f>      Rainbow spread (default: 3.0)",
+  "  -p, --spread=<f>      Rainbow spread (default: 12.0)",
   "  -F, --freq=<f>        Rainbow frequency (default: 0.1)",
   "  -S, --seed=<i>        Rainbow seed, 0 = random (default: 0)",
   "  -a, --animate         Enable psychedelics",
@@ -217,7 +216,7 @@ int main(int argc,char **argv) {
   println = &println_plain;
   opts.flags=0;
   opts.os=0;
-  opts.spread=3.0F;
+  opts.spread=12.0F;
   opts.freq=0.1F;
   opts.seed=0;
   opts.duration=12;
@@ -330,7 +329,11 @@ int main(int argc,char **argv) {
   signal(SIGINT, signalhandler);
   signal(SIGTERM, signalhandler);
   signal(SIGHUP, signalhandler);
-  if (animate(opts)) hide_cursor();
+  if (animate(opts)) {
+    hide_cursor();
+    if (opts.duration <= 0) opts.duration = 12.0F;
+    if (opts.speed <= 0) opts.speed = 20.0F;
+  }
   if (help(opts))
     print_usage();
   else if (i==argc)
