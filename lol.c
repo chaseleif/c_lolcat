@@ -324,7 +324,7 @@ int main(int argc,char **argv) {
   if (i==argc)
     cat(stdin);
   else for ( ;i<argc;++i) {
-    if (argv[i][0]=='-' && argv[i][1]=='\0') cat(STDIN_FILENO);
+    if (argv[i][0]=='-' && argv[i][1]=='\0') cat(stdin);
     else {
       FILE *infile = fopen(argv[i],"r");
       if (!infile) {
