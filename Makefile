@@ -1,6 +1,6 @@
 CC:=gcc
 #CFLAGS:=-O0 -ggdb3 -lm
-CFLAGS:=-O3 --fast-math
+CFLAGS:=-march=native -O3 --fast-math
 LDFLAGS:=-lm
 BIN=lolcat
 
