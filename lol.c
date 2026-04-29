@@ -322,7 +322,7 @@ int main(int argc,char **argv) {
   opts.os = rand()%256;
   if (animate(opts)) hide_cursor();
   if (i==argc)
-    cat(STDIN_FILENO);
+    cat(stdin);
   else for ( ;i<argc;++i) {
     if (argv[i][0]=='-' && argv[i][1]=='\0') cat(STDIN_FILENO);
     else {
