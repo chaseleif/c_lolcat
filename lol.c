@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <math.h>
 #include <unistd.h>
 #include <termios.h>
@@ -18,16 +19,24 @@ struct {
   int duration;
   float speed;
 }opts;
-#define animate(o)      (o.flags&0x1)
-#define invert(o)       (o.flags&0x2)
-#define truecolor(o)    (o.flags&0x4)
-#define force(o)        (o.flags&0x8)
-#define setanimate(o)   (o.flags|=0x1)
-#define setinvert(o)    (o.flags|=0x2)
-#define settruecolor(o) (o.flags|=0x4)
-#define setforce(o)     (o.flags|=0x8)
+#define animate(o)      (o.flags&1)
+#define invert(o)       (o.flags&2)
+#define truecolor(o)    (o.flags&4)
+#define force(o)        (o.flags&8)
+#define help(o)         (o.flags&16)
+#define abort(o)        (o.flags&32)
+#define setanimate(o)   (o.flags|=1)
+#define setinvert(o)    (o.flags|=2)
+#define settruecolor(o) (o.flags|=4)
+#define setforce(o)     (o.flags|=8)
+#define sethelp(o)      (o.flags|=16)
+#define setabort(o)     (o.flags|=32)
 
 void (*println)(char*,int*);
+
+void signalhandler(int sig) {
+  setabort(opts);
+}
 
 void animationpause(const double seconds) {
   struct timespec ts;
@@ -38,7 +47,9 @@ void animationpause(const double seconds) {
     ++ts.tv_sec;
     ts.tv_nsec -= 1000000000L;
   }
-  while (nanosleep(&ts, NULL) == -1) { }
+  while (nanosleep(&ts, NULL) == -1) {
+    if (abort(opts)) break;
+  }
 }
 
 void rainbow(int i, int *r, int *g, int *b) {
@@ -126,6 +137,7 @@ void println_ani(char *str, int *os) {
       *os += opts.spread;
       println_plain(str, os);
       fflush(stdout);
+      if (abort(opts)) break;
       animationpause(1.0 / opts.speed);
     }
     *os = real_os;
@@ -136,6 +148,7 @@ void println_ani(char *str, int *os) {
 void cat(FILE *infile) {
   char line[512];
   while (1) {
+    if (abort(opts)) break;
     if (!fgets(line, sizeof(line), infile)) break;
     println(line, &opts.os);
     if (invert(opts))
@@ -152,10 +165,6 @@ void cat(FILE *infile) {
 }
 
 void print_usage() {
-  if (animate(opts)) hide_cursor();
-  if (!opts.seed) srand(time(NULL));
-  else srand(opts.seed);
-  opts.os = rand()%256;
   char *usage[] = {
   "",
   "Usage: lolcat [OPTION]... [FILE]...",
@@ -187,12 +196,12 @@ void print_usage() {
   for (int i=0;usage[i];++i) {
     println(usage[i], &opts.os);
     printf("\n");
+    if (abort(opts)) break;
   }
   if (invert(opts))
     printf("\x1b[49m\n");
   else
     printf("\x1b[39m\n");
-  if (animate(opts)) show_cursor();
 }
 
 void print_version() {
@@ -215,7 +224,7 @@ int main(int argc,char **argv) {
   opts.speed=20.0F;
   int i=1;
   for ( ;i<argc;++i) {
-    if (argv[i][0] != '-') {
+    if (argv[i][0] != '-' || argv[i][1] == '\0') {
       break;
     }
     if (argv[i][1] && argv[i][2] == '\0') {
@@ -256,8 +265,7 @@ int main(int argc,char **argv) {
           print_version();
           return EXIT_SUCCESS;
         case 'h':
-          print_usage();
-          return EXIT_SUCCESS;
+          sethelp(opts);
         default:
           bad_argument(argv[i]);
           return EXIT_FAILURE;
@@ -309,8 +317,7 @@ int main(int argc,char **argv) {
       return EXIT_SUCCESS;
     }
     else if (!strcmp(argv[i], "help")) {
-      print_usage();
-      return EXIT_SUCCESS;
+      sethelp(opts);
     }
     else {
       bad_argument(argv[i]-2);
@@ -320,8 +327,13 @@ int main(int argc,char **argv) {
   if (!opts.seed) srand(time(NULL));
   else srand(opts.seed);
   opts.os = rand()%256;
+  signal(SIGINT, signalhandler);
+  signal(SIGTERM, signalhandler);
+  signal(SIGHUP, signalhandler);
   if (animate(opts)) hide_cursor();
-  if (i==argc)
+  if (help(opts))
+    print_usage();
+  else if (i==argc)
     cat(stdin);
   else for ( ;i<argc;++i) {
     if (argv[i][0]=='-' && argv[i][1]=='\0') cat(stdin);
@@ -336,6 +348,7 @@ int main(int argc,char **argv) {
         fclose(infile);
       }
     }
+    if (abort(opts)) break;
   }
   if (animate(opts)) show_cursor();
   return EXIT_SUCCESS;
